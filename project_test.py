@@ -49,25 +49,23 @@ print("\n🔗 Merging economic indicators...")
 indicators = []
 for code, name in FRED_SERIES.items():
     df = pd.read_csv(f"{RAW_DIR}/{code}.csv", parse_dates=["DATE"])
-    df.rename(columns={"DATE": "observation_date"}, inplace=True)
 
     if code == "SP500":
-        # Convert daily S&P 500 to monthly (end of month)
-        df = df.set_index("observation_date").resample("M").last().reset_index()
-        print(f"📈 Converted S&P500 daily data to monthly frequency, rows: {len(df)})")
+        # Convert daily S&P 500 data to monthly and align to first day of the month
+        df = df.set_index("DATE").resample("M").last().reset_index()
+        df["DATE"] = df["DATE"].dt.to_period("M").dt.to_timestamp()
+        print(f"📈 Converted S&P 500 to monthly (start of month), rows: {len(df)})")
 
     indicators.append(df)
 
-
+# Merge all data on "DATE"
 merged_df = reduce(
-    lambda left, right: pd.merge(left, right, on="observation_date", how="inner"),
+    lambda left, right: pd.merge(left, right, on="DATE", how="inner"),
     indicators,
 )
 
 print(f"✅ Merged indicators shape: {merged_df.shape}")
-print(
-    f"   Date range: {merged_df['observation_date'].min()} to {merged_df['observation_date'].max()}"
-)
+print(f"   Date range: {merged_df['DATE'].min()} to {merged_df['DATE'].max()}")
 
 # Save merged data
 merged_df.to_csv(f"{PROCESSED_DIR}/merged_data.csv", index=False)
