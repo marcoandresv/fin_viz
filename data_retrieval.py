@@ -83,3 +83,34 @@ print(f"\n✅ Merged data saved to {PROCESSED_DIR}/merged_data.csv")
 # Show first few rows
 print("\nFirst 5 rows:")
 print(merged_df.head())
+
+# Fix missing data before scaling
+filled_df = merged_df.copy()
+filled_df = filled_df.fillna(method="ffill").fillna(
+    method="bfill"
+)  # forward fill then backward fill
+
+# Normalization (Indexing to 100 at START_DATE)
+normalized_df = filled_df.copy()
+for col in normalized_df.columns:
+    if col != "DATE":
+        first_value = normalized_df[col].iloc[0]  # Use first row (after fill)
+        normalized_df[col] = (normalized_df[col] / first_value) * 100
+
+# Save normalized data
+normalized_df.to_csv(f"{PROCESSED_DIR}/merged_data_normalized.csv", index=False)
+print(
+    f"✅ Normalized (indexed) data saved to {PROCESSED_DIR}/merged_data_normalized.csv"
+)
+
+# Min-Max Scaling (0-1 scale)
+minmax_df = filled_df.copy()
+for col in minmax_df.columns:
+    if col != "DATE":
+        min_val = minmax_df[col].min()
+        max_val = minmax_df[col].max()
+        minmax_df[col] = (minmax_df[col] - min_val) / (max_val - min_val)
+
+# Save min-max scaled data
+minmax_df.to_csv(f"{PROCESSED_DIR}/merged_data_minmax.csv", index=False)
+print(f"✅ Min-Max scaled data saved to {PROCESSED_DIR}/merged_data_minmax.csv")

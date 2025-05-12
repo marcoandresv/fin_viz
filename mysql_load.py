@@ -68,3 +68,35 @@ merged_df.to_sql(
 
 print(f"✅ Loaded {len(merged_df)} rows into `merged_data` table")
 print("🎉 All data (raw + merged) loaded into MySQL!")
+
+
+# Upload normalized merged data
+normalized_df = pd.read_csv(
+    "data/processed/merged_data_normalized.csv", parse_dates=["DATE"]
+)
+normalized_df.to_sql(
+    "merged_data_normalized",
+    con=engine,
+    if_exists="replace",
+    index=False,
+    schema=MYSQL_DB,
+    dtype={
+        "DATE": sqlalchemy.types.DateTime(),
+        # Use Float for all numeric columns
+    },
+)
+print("✅ Loaded normalized merged data into `merged_data_normalized` table")
+
+# Upload min-max scaled merged data
+minmax_df = pd.read_csv("data/processed/merged_data_minmax.csv", parse_dates=["DATE"])
+minmax_df.to_sql(
+    "merged_data_minmax",
+    con=engine,
+    if_exists="replace",
+    index=False,
+    schema=MYSQL_DB,
+    dtype={
+        "DATE": sqlalchemy.types.DateTime(),
+    },
+)
+print("✅ Loaded min-max scaled merged data into `merged_data_minmax` table")
