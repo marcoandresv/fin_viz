@@ -47,3 +47,24 @@ for csv_file in csv_files:
     print(f"✅ Loaded {len(df)} rows into `{indicator_name}` table")
 
 print("🎉 All raw data loaded into MySQL!")
+
+
+# Upload the merged data file
+print("\n🚀 Uploading merged data...")
+
+# Load merged CSV
+merged_df = pd.read_csv("data/processed/merged_data.csv", parse_dates=["DATE"])
+
+# Upload process
+merged_df.to_sql(
+    "merged_data",
+    con=engine,
+    if_exists="replace",
+    index=False,
+    schema=MYSQL_DB,
+    dtype={col: sqlalchemy.types.Float() for col in merged_df.columns if col != "DATE"}
+    | {"DATE": sqlalchemy.types.DateTime()},
+)
+
+print(f"✅ Loaded {len(merged_df)} rows into `merged_data` table")
+print("🎉 All data (raw + merged) loaded into MySQL!")

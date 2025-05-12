@@ -13,13 +13,13 @@ os.makedirs(PROCESSED_DIR, exist_ok=True)
 
 # Define the FRED series codes
 FRED_SERIES = {
-    "UNRATE": "Unemployment Rate",
-    "CPIAUCSL": "Consumer Price Index",
-    "INDPRO": "Industrial Production",
-    "FEDFUNDS": "Federal Funds Rate",
-    "GDP": "Gross Domestic Product",
-    "PCE": "Personal Consumption Expenditures",
-    "SP500": "S&P 500 Index",
+    "UNRATE": "Unemployment Rate",  # Monthly
+    "CPIAUCSL": "Consumer Price Index",  # Monthly
+    "INDPRO": "Industrial Production",  # Monthly
+    "FEDFUNDS": "Federal Funds Rate",  # Monthly
+    "GDP": "Gross Domestic Product",  # Quarterly
+    "PCE": "Personal Consumption Expenditures",  # Quarterly
+    "SP500": "S&P 500 Index",  # Daily -> Monthly
 }
 
 # Date range
@@ -51,18 +51,27 @@ for code, name in FRED_SERIES.items():
     df = pd.read_csv(f"{RAW_DIR}/{code}.csv", parse_dates=["DATE"])
 
     if code == "SP500":
-        # Convert daily S&P 500 data to monthly and align to first day of the month
+        # Convert daily S&P 500 to monthly (last value of the month)
         df = df.set_index("DATE").resample("M").last().reset_index()
         df["DATE"] = df["DATE"].dt.to_period("M").dt.to_timestamp()
-        print(f"📈 Converted S&P 500 to monthly (start of month), rows: {len(df)})")
+        print(f"📈 Converted S&P 500 to monthly, rows: {len(df)})")
+    else:
+        # Round all dates to month start (force to monthly grid)
+        df["DATE"] = df["DATE"].dt.to_period("M").dt.to_timestamp()
 
+    df = df.sort_values("DATE")
     indicators.append(df)
 
-# Merge all data on "DATE"
-merged_df = reduce(
-    lambda left, right: pd.merge(left, right, on="DATE", how="inner"),
-    indicators,
-)
+# Create a full monthly date range from START_DATE to END_DATE
+date_range = pd.date_range(start=START_DATE, end=END_DATE, freq="MS")
+merged_df = pd.DataFrame({"DATE": date_range})
+
+# Merge each indicator one by one (using outer join, then forward-fill missing)
+for df in indicators:
+    merged_df = pd.merge(merged_df, df, on="DATE", how="left")
+
+# Fill missing quarterly values forward
+merged_df = merged_df.ffill()
 
 print(f"✅ Merged indicators shape: {merged_df.shape}")
 print(f"   Date range: {merged_df['DATE'].min()} to {merged_df['DATE'].max()}")
